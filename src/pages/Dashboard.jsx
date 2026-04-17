@@ -1,235 +1,347 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  FaTaxi, 
-  MdPerson, 
-  MdMap, 
-  MdLocationOn, 
-  MdAssignment, 
-  MdLocationCity,
-  MdTrendingUp,
-  MdWarning,
-  MdCheckCircle
-} from 'react-icons/md';
-import { FaRupeeSign } from 'react-icons/fa';
+  FaBus, 
+  FaRoute, 
+  FaUsers, 
+  FaCalendar, 
+  FaCheckCircle, 
+  FaExclamationCircle, 
+  FaMapMarkerAlt,
+  FaPlay,
+  FaStop,
+  FaClock,
+  FaChevronRight,
+  FaLocationArrow,
+  FaSignal,
+  FaHistory
+} from 'react-icons/fa';
+import { MdTrendingUp, MdLocationSearching, MdVerifiedUser } from 'react-icons/md';
+import { useAuth } from '../context/AuthContext';
+import { driverDashboardAPI } from '../api';
+import { toast } from 'react-toastify';
+import useSound from '../hooks/useSound';
 
 const Dashboard = ({ setActivePage }) => {
-  const statsCards = [
-    { title: 'Total Vehicles', value: '25', icon: FaTaxi, color: 'blue', subtext: '4 Active, 1 Maintenance' },
-    { title: 'Active Drivers', value: '18', icon: MdPerson, color: 'green', subtext: '2 on leave' },
-    { title: 'Total Routes', value: '12', icon: MdMap, color: 'purple', subtext: '45 stops covered' },
-    { title: 'Transport Allocated', value: '320', icon: MdLocationCity, color: 'orange', subtext: '15 pending' },
-    { title: 'Route Charges', value: '₹2,500', icon: FaRupeeSign, color: 'indigo', subtext: 'Avg per route' },
-    { title: 'Assignments', value: '12', icon: MdAssignment, color: 'pink', subtext: 'All routes covered' }
+  const { user, token } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [tripStatus, setTripStatus] = useState('idle'); // idle, picking, dropping
+  const [location, setLocation] = useState(null);
+  const { playSound } = useSound();
+  
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalStops: 0,
+    assignment: null,
+    routeStops: [],
+    driver: null
+  });
+
+  useEffect(() => {
+    fetchDashboardData();
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [token]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await driverDashboardAPI.getStats();
+      if (response.data) {
+        setStats({
+          totalStudents: response.data.stats?.totalStudents || 0,
+          totalStops: response.data.stats?.totalStops || 0,
+          assignment: response.data.assignment,
+          routeStops: response.data.routeStops || [],
+          driver: response.data.driver
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+      if (error.response?.status !== 401) {
+        toast.error('Failed to load dashboard data');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startTrip = (type) => {
+    playSound('start');
+    setTripStatus(type);
+    toast.info(`${type === 'picking' ? 'Student Pickup' : 'Student Drop'} started`);
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (err) => console.error('Location error:', err),
+        { enableHighAccuracy: true }
+      );
+    }
+    
+    // Redirect to Live Tracking
+    setActivePage('route-tracking');
+  };
+
+  const endTrip = () => {
+    playSound('end');
+    setTripStatus('idle');
+    setLocation(null);
+    toast.success('Trip completed successfully');
+  };
+
+  const quickActions = [
+    { id: 1, title: 'Transport Registry', icon: FaUsers, bgColor: 'bg-indigo-600', action: () => setActivePage('profile') },
+    { id: 2, title: 'Route Details', icon: FaRoute, bgColor: 'bg-indigo-700', action: () => setActivePage('route-details') },
+    { id: 3, title: 'Vehicle Checklist', icon: FaBus, bgColor: 'bg-slate-800', action: () => setActivePage('vehicle-checklist') },
+    { id: 4, title: 'Complaints', icon: FaExclamationCircle, bgColor: 'bg-rose-600', action: () => setActivePage('emergency-complaints') }
   ];
 
-  const recentActivities = [
-    { action: 'New vehicle added', detail: 'DL-01-AB-1234 - School Taxi', time: '2 hours ago', type: 'success' },
-    { action: 'Driver assigned', detail: 'Rajesh Kumar to Route A - Sector 15', time: '4 hours ago', type: 'info' },
-    { action: 'Transport allocated', detail: 'Aarav Sharma to Route B - Gurgaon', time: '6 hours ago', type: 'success' },
-    { action: 'Route charges updated', detail: 'Route C - Noida: ₹2,800', time: '1 day ago', type: 'warning' },
-    { action: 'Vehicle maintenance', detail: 'DL-03-EF-9012 scheduled for service', time: '2 days ago', type: 'warning' }
-  ];
-
-  const quickStats = [
-    { label: 'Today\'s Revenue', value: '₹8,500', trend: '+12%', positive: true },
-    { label: 'Active Routes', value: '11/12', trend: '92%', positive: true },
-    { label: 'On-time Performance', value: '94%', trend: '+3%', positive: true },
-    { label: 'Fuel Efficiency', value: '12.5 km/l', trend: '+0.8', positive: true }
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600 font-bold uppercase tracking-widest text-[10px] animate-pulse">Syncing Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 space-y-8 p-6">
-      <div className="flex items-center justify-between bg-white/70 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/20">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">Transport Dashboard</h1>
-          <p className="text-gray-600 mt-2 font-medium">Welcome back! Here's your transport overview</p>
-        </div>
-        <div className="text-right">
-          <div className="text-sm text-gray-500 bg-white/50 px-4 py-2 rounded-full">
-            Last updated: {new Date().toLocaleTimeString()}
+    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* Professional Header Section */}
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
+                Transport Operations
+              </span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight uppercase">
+              Welcome, {user?.name?.split(' ')[0]}
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">
+              {stats.assignment 
+                ? `Assigned Route: ${stats.assignment.route?.routeName} | Bus No: ${stats.assignment.vehicle?.vehicleNo}`
+                : "Awaiting route assignments..."}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4 text-slate-600">
+            <div className="text-right">
+               <p className="text-2xl font-bold tracking-tight text-slate-800 uppercase">
+                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+               </p>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                 {currentTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+               </p>
+            </div>
           </div>
         </div>
       </div>
-      
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statsCards.map((stat, index) => {
-          const IconComponent = stat.icon;
-          const colorClasses = {
-            blue: { 
-              gradient: 'from-blue-500 to-cyan-400', 
-              bg: 'bg-gradient-to-br from-blue-50 to-cyan-50',
-              shadow: 'shadow-blue-200',
-              text: 'text-blue-700'
-            },
-            green: { 
-              gradient: 'from-green-500 to-emerald-400', 
-              bg: 'bg-gradient-to-br from-green-50 to-emerald-50',
-              shadow: 'shadow-green-200',
-              text: 'text-green-700'
-            },
-            purple: { 
-              gradient: 'from-purple-500 to-violet-400', 
-              bg: 'bg-gradient-to-br from-purple-50 to-violet-50',
-              shadow: 'shadow-purple-200',
-              text: 'text-purple-700'
-            },
-            orange: { 
-              gradient: 'from-orange-500 to-amber-400', 
-              bg: 'bg-gradient-to-br from-orange-50 to-amber-50',
-              shadow: 'shadow-orange-200',
-              text: 'text-orange-700'
-            },
-            indigo: { 
-              gradient: 'from-indigo-500 to-blue-400', 
-              bg: 'bg-gradient-to-br from-indigo-50 to-blue-50',
-              shadow: 'shadow-indigo-200',
-              text: 'text-indigo-700'
-            },
-            pink: { 
-              gradient: 'from-pink-500 to-rose-400', 
-              bg: 'bg-gradient-to-br from-pink-50 to-rose-50',
-              shadow: 'shadow-pink-200',
-              text: 'text-pink-700'
-            }
-          };
-          return (
-            <div key={index} className={`${colorClasses[stat.color].bg} p-6 rounded-2xl shadow-lg ${colorClasses[stat.color].shadow} hover:shadow-xl hover:scale-105 transition-all duration-300 border border-white/50 backdrop-blur-sm`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">{stat.title}</h3>
-                  <p className={`text-4xl font-bold ${colorClasses[stat.color].text} mt-2`}>{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-2 font-medium">{stat.subtext}</p>
+
+      {/* Control & Asset Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 md:p-8 border border-slate-200">
+          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+            <div className="space-y-1">
+               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-3 uppercase tracking-tight">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100">
+                     <MdLocationSearching size={18} />
+                  </div>
+                  Trip Controls
+               </h2>
+               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Manage current route phase</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-4">
+            {tripStatus === 'idle' ? (
+              <>
+                <button
+                  onClick={() => startTrip('picking')}
+                  className="flex-1 group bg-indigo-600 p-6 rounded-xl transition-all active:scale-95 text-white shadow-lg shadow-indigo-100"
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-lg">
+                      <FaPlay className="ml-0.5" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest mb-1">Inbound Trip</p>
+                      <h3 className="text-lg font-bold uppercase tracking-wide">Start Pickup</h3>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => startTrip('dropping')}
+                  className="flex-1 group bg-slate-800 p-6 rounded-xl transition-all active:scale-95 text-white shadow-lg shadow-slate-100"
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-lg">
+                      <FaPlay size={14} className="ml-0.5" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest mb-1">Outbound Trip</p>
+                      <h3 className="text-lg font-bold text-white uppercase tracking-wide">Start Drop</h3>
+                    </div>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <div className="w-full">
+                <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50 rounded-xl border border-slate-200 relative overflow-hidden">
+                  <div className="w-16 h-16 bg-white rounded-xl shadow-sm flex items-center justify-center text-3xl text-indigo-600 border border-slate-100">
+                    <FaMapMarkerAlt className="animate-pulse" />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Real-time tracking enabled</p>
+                    <h3 className="text-lg font-bold text-slate-800 uppercase tracking-tight">
+                      {tripStatus === 'picking' ? 'Student Pickup Phase' : 'Student Drop Phase'}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={endTrip}
+                    className="px-8 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 active:scale-95"
+                  >
+                    <FaStop size={12} /> 
+                    <span>Complete Trip</span>
+                  </button>
                 </div>
-                <div className={`p-4 bg-gradient-to-br ${colorClasses[stat.color].gradient} rounded-2xl shadow-lg`}>
-                  <IconComponent className="text-3xl text-white drop-shadow-lg" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Asset Performance Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-slate-200">
+          <div className="space-y-6">
+            <h3 className="text-sm font-bold flex items-center gap-3 uppercase tracking-wider text-slate-800">
+               <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center border border-indigo-100">
+                  <FaBus size={14} />
+               </div>
+               Asset Allocation
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-4">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-lg shadow-sm">🆔</div>
+                <div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Vehicle Number</p>
+                  <p className="text-lg font-bold text-slate-700">{stats.assignment?.vehicle?.vehicleNo || 'Not Assigned'}</p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-4">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-lg shadow-sm">🗺️</div>
+                <div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Current Route</p>
+                  <p className="text-md font-bold text-slate-700 truncate max-w-[150px] uppercase">{stats.assignment?.route?.routeName || 'Unassigned'}</p>
                 </div>
               </div>
             </div>
-          );
-        })}
+
+            <button 
+              onClick={() => setActivePage('route-details')}
+              className="w-full py-3.5 bg-slate-100 text-slate-600 rounded-lg font-bold uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 hover:bg-slate-200"
+            >
+              Route Overview <FaChevronRight size={10} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Quick Performance Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {quickStats.map((stat, index) => (
-          <div key={index} className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 p-6 rounded-2xl shadow-lg border border-white/50 hover:shadow-xl hover:scale-105 transition-all duration-300 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">{stat.label}</p>
-                <p className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mt-1">{stat.value}</p>
-              </div>
-              <div className={`flex items-center text-sm font-bold px-3 py-1 rounded-full ${
-                stat.positive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
-              }`}>
-                <MdTrendingUp className="mr-1" />
-                {stat.trend}
-              </div>
+      {/* Analytics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Assigned Students', val: stats.totalStudents, icon: FaUsers, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Route Stops', val: stats.totalStops, icon: FaMapMarkerAlt, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Pending Alerts', val: 0, icon: FaExclamationCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
+          { label: 'Service Days', val: 24, icon: FaCalendar, color: 'text-blue-600', bg: 'bg-blue-50' },
+        ].map((item, i) => (
+          <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div className={`p-2.5 rounded-lg ${item.bg} ${item.color} w-fit mb-4`}>
+              <item.icon size={18} />
             </div>
+            <p className="text-3xl font-bold text-slate-800 tracking-tight mb-0.5">{item.val}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activities */}
-        <div className="bg-gradient-to-br from-white via-green-50 to-emerald-50 p-6 rounded-2xl shadow-lg border border-white/50 backdrop-blur-sm">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-            <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-400 rounded-xl mr-3 shadow-lg">
-              <MdCheckCircle className="text-white text-xl" />
-            </div>
-            Recent Activities
-          </h2>
-          <div className="space-y-4 max-h-80 overflow-y-auto">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-start p-4 bg-white/70 rounded-xl hover:bg-white/90 transition-all duration-300 shadow-sm hover:shadow-md border border-white/30">
-                <div className={`w-3 h-3 rounded-full mt-2 mr-4 shadow-lg ${
-                  activity.type === 'success' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                  activity.type === 'warning' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-gradient-to-r from-blue-400 to-cyan-500'
-                }`}></div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">{activity.action}</p>
-                  <p className="text-sm text-gray-600 mt-1">{activity.detail}</p>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">{activity.time}</p>
+      {/* Quick Launchpad */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <button
+              key={action.id}
+              onClick={action.action}
+              className={`group ${action.bgColor} p-6 rounded-xl shadow-sm transition-all active:scale-95 text-white text-left`}
+            >
+              <div className="flex flex-col h-full justify-between gap-6">
+                <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center text-lg">
+                   <Icon />
                 </div>
+                <p className="font-bold text-md uppercase tracking-wide">{action.title}</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* System Status */}
-        <div className="bg-gradient-to-br from-white via-yellow-50 to-orange-50 p-6 rounded-2xl shadow-lg border border-white/50 backdrop-blur-sm">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-            <div className="p-2 bg-gradient-to-br from-yellow-500 to-orange-400 rounded-xl mr-3 shadow-lg">
-              <MdWarning className="text-white text-xl" />
-            </div>
-            System Status
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border border-green-200 shadow-sm">
-              <span className="font-semibold text-green-800">Vehicle Fleet</span>
-              <span className="text-sm text-green-700 font-bold bg-green-200 px-3 py-1 rounded-full">Operational</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border border-green-200 shadow-sm">
-              <span className="font-semibold text-green-800">Driver Availability</span>
-              <span className="text-sm text-green-700 font-bold bg-green-200 px-3 py-1 rounded-full">Good</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl border border-yellow-200 shadow-sm">
-              <span className="font-semibold text-yellow-800">Route Coverage</span>
-              <span className="text-sm text-yellow-700 font-bold bg-yellow-200 px-3 py-1 rounded-full">1 Route Pending</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border border-green-200 shadow-sm">
-              <span className="font-semibold text-green-800">Transport Allocation</span>
-              <span className="text-sm text-green-700 font-bold bg-green-200 px-3 py-1 rounded-full">95% Complete</span>
-            </div>
-          </div>
-        </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-gradient-to-br from-white via-indigo-50 to-purple-50 p-8 rounded-2xl shadow-lg border border-white/50 backdrop-blur-sm">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-          <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-400 rounded-xl mr-3 shadow-lg">
-            <MdAssignment className="text-white text-xl" />
+      {/* Route List Section */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+        <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight uppercase">Assigned Stop Sequence</h2>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Timings and locations for current route</p>
           </div>
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <button 
-            onClick={() => setActivePage('vehicle-master')}
-            className="group p-6 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 rounded-2xl transition-all duration-300 text-center shadow-lg hover:shadow-xl hover:scale-105 border border-blue-200"
-          >
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl mx-auto mb-3 w-fit shadow-lg group-hover:scale-110 transition-transform">
-              <FaTaxi className="text-2xl text-white" />
-            </div>
-            <span className="text-sm font-bold text-blue-800">Add Vehicle</span>
-          </button>
-          <button 
-            onClick={() => setActivePage('driver-master')}
-            className="group p-6 bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 rounded-2xl transition-all duration-300 text-center shadow-lg hover:shadow-xl hover:scale-105 border border-green-200"
-          >
-            <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-400 rounded-2xl mx-auto mb-3 w-fit shadow-lg group-hover:scale-110 transition-transform">
-              <MdPerson className="text-2xl text-white" />
-            </div>
-            <span className="text-sm font-bold text-green-800">Add Driver</span>
-          </button>
-          <button 
-            onClick={() => setActivePage('route-master')}
-            className="group p-6 bg-gradient-to-br from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100 rounded-2xl transition-all duration-300 text-center shadow-lg hover:shadow-xl hover:scale-105 border border-purple-200"
-          >
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-400 rounded-2xl mx-auto mb-3 w-fit shadow-lg group-hover:scale-110 transition-transform">
-              <MdMap className="text-2xl text-white" />
-            </div>
-            <span className="text-sm font-bold text-purple-800">New Route</span>
-          </button>
-          <button 
-            onClick={() => setActivePage('transport-allocation')}
-            className="group p-6 bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 rounded-2xl transition-all duration-300 text-center shadow-lg hover:shadow-xl hover:scale-105 border border-orange-200"
-          >
-            <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-400 rounded-2xl mx-auto mb-3 w-fit shadow-lg group-hover:scale-110 transition-transform">
-              <MdLocationCity className="text-2xl text-white" />
-            </div>
-            <span className="text-sm font-bold text-orange-800">Allocate Transport</span>
-          </button>
+          <div className="px-3 py-1.5 bg-white rounded-lg border border-slate-200 flex items-center gap-2">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Waypoints</span>
+            <span className="text-sm font-bold text-indigo-600">{stats.routeStops.length}</span>
+          </div>
+        </div>
+        
+        <div className="p-6 md:p-8">
+          <div className="relative space-y-6 before:absolute before:inset-0 before:ml-4 before:h-full before:w-px before:-translate-x-1/2 before:bg-slate-100">
+            {stats.routeStops.length > 0 ? (
+              stats.routeStops.map((stop, index) => (
+                <div key={stop._id} className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className="relative z-10 w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 font-bold text-xs shadow-sm">
+                      {stop.stopOrder}
+                    </div>
+                    <div className="space-y-0.5">
+                      <h4 className="font-bold text-slate-800 text-sm uppercase">{stop.stopName}</h4>
+                      <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                         <FaMapMarkerAlt className="text-indigo-400" size={10} /> {stop.stopLocation}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                      <div className="flex items-center gap-2 text-indigo-600">
+                         <FaClock size={11} />
+                         <p className="text-xs font-bold">{stop.pickupTime}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-slate-400">
+                <p className="text-sm font-medium italic">No route details found.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

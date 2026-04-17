@@ -1,242 +1,208 @@
-import React, { useState } from 'react';
-import { FaBullhorn, FaCalendarAlt, FaExclamationTriangle, FaInfoCircle, FaRoute, FaClock } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { 
+  FaBullhorn, 
+  FaCalendar, 
+  FaExclamationCircle, 
+  FaInfoCircle, 
+  FaChevronDown, 
+  FaChevronUp,
+  FaCaretRight,
+  FaRegLightbulb
+} from 'react-icons/fa';
+import { MdOutlineAnnouncement, MdVerified, MdOutlineScheduleSend } from 'react-icons/md';
+import { driverDashboardAPI } from '../api';
+import { toast } from 'react-toastify';
 
 const Notices = () => {
-  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [notices, setNotices] = useState([]);
+  const [selectedNotice, setSelectedNotice] = useState(null);
 
-  const notices = [
-    {
-      id: 1,
-      title: 'Holiday Notice - Republic Day',
-      content: 'School will remain closed on 26th January 2024 for Republic Day. No transport service will be available.',
-      type: 'holiday',
-      priority: 'high',
-      date: '2024-01-20',
-      author: 'School Administration'
-    },
-    {
-      id: 2,
-      title: 'Route Change Alert - Route A',
-      content: 'Due to road construction on Main Street, Route A will be diverted via Park Road from 22nd January. Please inform students about the temporary change.',
-      type: 'route_change',
-      priority: 'urgent',
-      date: '2024-01-18',
-      author: 'Transport Manager'
-    },
-    {
-      id: 3,
-      title: 'Safety Instructions Update',
-      content: 'All drivers must ensure students wear seat belts and maintain discipline during the journey. Regular safety checks are mandatory.',
-      type: 'instruction',
-      priority: 'medium',
-      date: '2024-01-15',
-      author: 'Safety Officer'
-    },
-    {
-      id: 4,
-      title: 'New Pickup Point Added',
-      content: 'A new pickup point has been added at Metro Station for Route B. Timing: 7:45 AM. Please update your route accordingly.',
-      type: 'route_change',
-      priority: 'medium',
-      date: '2024-01-12',
-      author: 'Transport Manager'
-    },
-    {
-      id: 5,
-      title: 'Monthly Driver Meeting',
-      content: 'All drivers are required to attend the monthly meeting on 25th January at 3:00 PM in the school auditorium.',
-      type: 'meeting',
-      priority: 'high',
-      date: '2024-01-10',
-      author: 'Principal'
-    },
-    {
-      id: 6,
-      title: 'Fuel Efficiency Guidelines',
-      content: 'Please follow eco-friendly driving practices to improve fuel efficiency. Maintain steady speed and avoid sudden acceleration.',
-      type: 'instruction',
-      priority: 'low',
-      date: '2024-01-08',
-      author: 'Transport Manager'
-    }
-  ];
+  useEffect(() => {
+    fetchNotices();
+  }, []);
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'holiday': return FaCalendarAlt;
-      case 'route_change': return FaRoute;
-      case 'instruction': return FaInfoCircle;
-      case 'meeting': return FaClock;
-      default: return FaBullhorn;
+  const fetchNotices = async () => {
+    try {
+      setLoading(true);
+      const response = await driverDashboardAPI.getNotices();
+      setNotices(response.data?.notices || []);
+    } catch (error) {
+      console.error('Error fetching notices:', error);
+      toast.error('Notice synchronization failed');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  const priorityStyles = {
+    high: 'bg-rose-50 text-rose-600 border-rose-100',
+    medium: 'bg-amber-50 text-amber-600 border-amber-100',
+    low: 'bg-indigo-50 text-indigo-600 border-indigo-100'
+  };
+
+  const getTypeStyle = (type) => {
+    switch(type?.toLowerCase()) {
+      case 'urgent': return 'border-l-4 border-l-rose-500 bg-white border-y border-r border-slate-200';
+      case 'important': return 'border-l-4 border-l-amber-500 bg-white border-y border-r border-slate-200';
+      case 'general': return 'border-l-4 border-l-indigo-500 bg-white border-y border-r border-slate-200';
+      default: return 'border-l-4 border-l-slate-400 bg-white border-y border-r border-slate-200';
     }
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'holiday': return 'text-green-600';
-      case 'route_change': return 'text-blue-600';
-      case 'instruction': return 'text-purple-600';
-      case 'meeting': return 'text-orange-600';
-      default: return 'text-gray-600';
-    }
-  };
-
-  const filteredNotices = filter === 'all' 
-    ? notices 
-    : notices.filter(notice => notice.type === filter);
+  if (loading) {
+     return (
+       <div className="flex items-center justify-center h-screen bg-slate-50">
+         <div className="text-center">
+           <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+           <p className="text-slate-600 font-bold tracking-widest animate-pulse uppercase text-xs">Loading Announcements...</p>
+         </div>
+       </div>
+     );
+  }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-[#F3F4F4] to-[#5F9598]/10 min-h-screen" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
-      <div className="mx-auto px-6">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#5F9598] to-[#1D546D] p-6 text-white">
-            <h1 className="text-2xl font-bold">Notices & Instructions</h1>
-            <p className="text-purple-100">Stay updated with important announcements</p>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="border-b bg-gray-50">
-            <nav className="flex overflow-x-auto">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-6 py-3 font-medium whitespace-nowrap ${
-                  filter === 'all'
-                    ? 'border-b-2 border-purple-500 text-purple-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                All Notices
-              </button>
-              <button
-                onClick={() => setFilter('holiday')}
-                className={`px-6 py-3 font-medium whitespace-nowrap ${
-                  filter === 'holiday'
-                    ? 'border-b-2 border-purple-500 text-purple-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Holidays
-              </button>
-              <button
-                onClick={() => setFilter('route_change')}
-                className={`px-6 py-3 font-medium whitespace-nowrap ${
-                  filter === 'route_change'
-                    ? 'border-b-2 border-purple-500 text-purple-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Route Changes
-              </button>
-              <button
-                onClick={() => setFilter('instruction')}
-                className={`px-6 py-3 font-medium whitespace-nowrap ${
-                  filter === 'instruction'
-                    ? 'border-b-2 border-purple-500 text-purple-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Instructions
-              </button>
-              <button
-                onClick={() => setFilter('meeting')}
-                className={`px-6 py-3 font-medium whitespace-nowrap ${
-                  filter === 'meeting'
-                    ? 'border-b-2 border-purple-500 text-purple-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Meetings
-              </button>
-            </nav>
-          </div>
-
-          {/* Notices List */}
-          <div className="p-6">
-            {filteredNotices.length === 0 ? (
-              <div className="text-center py-8">
-                <FaInfoCircle className="text-gray-400 text-4xl mx-auto mb-4" />
-                <p className="text-gray-600">No notices found for the selected filter.</p>
+    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* Header */}
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+           <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                 <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
+                    Announcements
+                 </span>
+                 <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold border border-emerald-100">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> ACTIVE
+                 </span>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredNotices.map((notice) => {
-                  const IconComponent = getIcon(notice.type);
-                  return (
-                    <div key={notice.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center">
-                          <IconComponent className={`text-xl mr-3 ${getTypeColor(notice.type)}`} />
-                          <h3 className="text-lg font-semibold text-gray-800">{notice.title}</h3>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(notice.priority)}`}>
-                          {notice.priority.toUpperCase()}
-                        </span>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight text-uppercase">NOTICE BOARD</h1>
+              <p className="text-slate-500 font-medium text-sm">Stay updated with the latest operational news and bulletins.</p>
+           </div>
+           
+           <div className="flex -space-x-3">
+              {[1, 2, 3].map(i => (
+                 <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center shadow-sm">
+                    <FaBullhorn className="text-slate-400 text-xs" />
+                 </div>
+              ))}
+              <div className="w-10 h-10 rounded-full border-2 border-white bg-indigo-600 flex items-center justify-center shadow-sm">
+                 <span className="text-white font-bold text-[10px]">+{notices.length}</span>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { label: 'Total Notices', val: notices.length, color: 'text-indigo-600', bg: 'bg-indigo-50', icon: MdOutlineAnnouncement },
+          { label: 'Urgent Alerts', val: notices.filter(n => n.type?.toLowerCase() === 'urgent').length, color: 'text-rose-600', bg: 'bg-rose-50', icon: FaExclamationCircle },
+          { label: 'General Info', val: notices.filter(n => n.type?.toLowerCase() === 'important').length, color: 'text-amber-600', bg: 'bg-amber-50', icon: FaRegLightbulb }
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+               <p className={`text-2xl font-bold ${stat.color} tracking-tight`}>{stat.val}</p>
+            </div>
+            <div className={`p-3 ${stat.bg} ${stat.color} rounded-lg`}>
+               <stat.icon size={20} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Notice Feed */}
+      <div className="space-y-4">
+        {notices.length > 0 ? (
+          notices.map((notice) => (
+            <div
+              key={notice._id}
+              onClick={() => setSelectedNotice(selectedNotice?._id === notice._id ? null : notice)}
+              className={`rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-sm ${getTypeStyle(notice.type)}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl shadow-sm border ${priorityStyles[notice.priority?.toLowerCase()] || priorityStyles.low}`}>
+                    {notice.priority?.toLowerCase() === 'high' ? <FaExclamationCircle /> : <FaBullhorn />}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight leading-none mb-2">{notice.title}</h3>
+                    <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-100">
+                        <MdOutlineScheduleSend size={14} className="text-slate-400" />
+                        <span>Posted: {new Date(notice.publishDate).toLocaleDateString()}</span>
                       </div>
-                      
-                      <p className="text-gray-700 mb-4 leading-relaxed">{notice.content}</p>
-                      
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <FaCalendarAlt className="mr-1" />
-                          <span>{notice.date}</span>
+                      {notice.expiryDate && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-rose-50 text-rose-600 rounded border border-rose-100">
+                          <FaCalendar size={12} className="text-rose-400" />
+                          <span>Expires: {new Date(notice.expiryDate).toLocaleDateString()}</span>
                         </div>
-                        <span>By: {notice.author}</span>
+                      )}
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-600 rounded border border-indigo-100 uppercase">
+                         <span className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse"></span>
+                         {notice.type || 'General'}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
+                
+                <div className="mt-2">
+                   {selectedNotice?._id === notice._id ? <FaChevronUp className="text-slate-400" size={12} /> : <FaChevronDown className="text-slate-400" size={12} />}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Important Reminders */}
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Important Reminders</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center mb-2">
-                <FaExclamationTriangle className="text-yellow-600 mr-2" />
-                <h3 className="font-semibold text-yellow-800">Daily Checklist</h3>
-              </div>
-              <p className="text-sm text-yellow-700">Complete your daily vehicle checklist before starting trips.</p>
+              {/* Expanded Content */}
+              {selectedNotice?._id === notice._id && (
+                <div className="mt-6 pt-6 border-t border-slate-100 animate-in slide-in-from-top-2 duration-300">
+                  <div className="bg-slate-50 rounded-lg p-6">
+                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+                       {notice.content}
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4 flex justify-end">
+                     <button className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-wider hover:gap-3 transition-all">
+                        Mark as Read <FaCaretRight />
+                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Preview with truncation */}
+              {selectedNotice?._id !== notice._id && (
+                <p className="mt-4 text-slate-500 text-sm line-clamp-2 md:pl-16 italic">
+                  "{notice.content}"
+                </p>
+              )}
             </div>
-            
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center mb-2">
-                <FaClock className="text-blue-600 mr-2" />
-                <h3 className="font-semibold text-blue-800">Punctuality</h3>
-              </div>
-              <p className="text-sm text-blue-700">Maintain scheduled timings for all pickup and drop points.</p>
+          ))
+        ) : (
+          <div className="bg-white rounded-xl border-2 border-dashed border-slate-200 p-16 text-center">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+               <FaBullhorn className="text-3xl text-slate-200" />
             </div>
-            
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center mb-2">
-                <FaInfoCircle className="text-green-600 mr-2" />
-                <h3 className="font-semibold text-green-800">Safety First</h3>
-              </div>
-              <p className="text-sm text-green-700">Always prioritize student safety and follow traffic rules.</p>
-            </div>
-            
-            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <div className="flex items-center mb-2">
-                <FaBullhorn className="text-purple-600 mr-2" />
-                <h3 className="font-semibold text-purple-800">Communication</h3>
-              </div>
-              <p className="text-sm text-purple-700">Report any issues or emergencies immediately to admin.</p>
-            </div>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight">No Active Notices</h2>
+            <p className="text-slate-400 text-sm mt-1">There are currently no announcements to display.</p>
           </div>
+        )}
+      </div>
+
+      {/* Priority Legend */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
+        <h3 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] flex items-center gap-2">
+           Legend: Priority Levels
+        </h3>
+        <div className="flex flex-wrap justify-center gap-6">
+          {[
+            { label: 'High Priority', color: 'bg-rose-500' },
+            { label: 'Important', color: 'bg-amber-500' },
+            { label: 'Information', color: 'bg-indigo-500' }
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-2 h-2 ${item.color} rounded-full`}></div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

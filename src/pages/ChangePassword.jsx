@@ -1,220 +1,197 @@
 import React, { useState } from 'react';
-import { FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
+import { FaLock, FaEye, FaEyeSlash, FaShieldAlt } from 'react-icons/fa';
+import { driverAPI } from '../api';
+import { toast } from 'react-toastify';
 
 const ChangePassword = () => {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [formData, setFormData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    old: false,
+    new: false,
+    confirm: false
+  });
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  const checkPasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-    return strength;
+  const validate = () => {
+    const errs = {};
+    if (!formData.oldPassword) errs.oldPassword = 'Current password is required';
+    if (!formData.newPassword) errs.newPassword = 'New password is required';
+    else if (formData.newPassword.length < 6) errs.newPassword = 'Password must be at least 6 characters';
+    if (!formData.confirmPassword) errs.confirmPassword = 'Please confirm password';
+    else if (formData.newPassword !== formData.confirmPassword) errs.confirmPassword = 'Passwords do not match';
+    if (formData.oldPassword === formData.newPassword) errs.newPassword = 'New password must be different from current';
+    return errs;
   };
 
-  const handleNewPasswordChange = (e) => {
-    const password = e.target.value;
-    setNewPassword(password);
-    setPasswordStrength(checkPasswordStrength(password));
-  };
-
-  const getStrengthColor = (strength) => {
-    switch (strength) {
-      case 0:
-      case 1: return 'bg-red-500';
-      case 2: return 'bg-orange-500';
-      case 3: return 'bg-yellow-500';
-      case 4: return 'bg-blue-500';
-      case 5: return 'bg-green-500';
-      default: return 'bg-gray-300';
-    }
-  };
-
-  const getStrengthText = (strength) => {
-    switch (strength) {
-      case 0:
-      case 1: return 'Very Weak';
-      case 2: return 'Weak';
-      case 3: return 'Fair';
-      case 4: return 'Good';
-      case 5: return 'Strong';
-      default: return '';
-    }
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (currentPassword !== 'pass123' && currentPassword !== 'pass456' && currentPassword !== 'pass789') {
-      alert('Current password is incorrect!');
+    const errs = validate();
+    if (Object.keys(errs).length) {
+      setErrors(errs);
       return;
     }
-    
-    if (newPassword !== confirmPassword) {
-      alert('New passwords do not match!');
-      return;
+
+    try {
+      setLoading(true);
+      await driverAPI.changePassword(formData.oldPassword, formData.newPassword);
+      toast.success('Password changed successfully');
+      setFormData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setErrors({});
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Failed to change password';
+      toast.error(msg);
+      if (msg.includes('current')) {
+        setErrors({ oldPassword: msg });
+      }
+    } finally {
+      setLoading(false);
     }
-    
-    if (passwordStrength < 3) {
-      alert('Password is too weak. Please choose a stronger password.');
-      return;
-    }
-    
-    alert('Password changed successfully!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setPasswordStrength(0);
   };
+
+  const inputClass = (field) => `w-full pl-10 pr-10 py-3 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium ${
+    errors[field] ? 'border-red-400' : 'border-slate-200'
+  }`;
 
   return (
-    <div className="p-6 bg-gradient-to-br from-[#F3F4F4] to-[#5F9598]/10 min-h-screen" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-[#5F9598] to-[#1D546D] p-6 text-white">
-            <div className="flex items-center">
-              <FaShieldAlt className="text-2xl mr-3" />
-              <div>
-                <h1 className="text-2xl font-bold">Change Password</h1>
-                <p className="text-indigo-100">Update your account security</p>
-              </div>
-            </div>
-          </div>
+    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* Header */}
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2 mb-2">
+           <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
+              Security
+           </span>
+        </div>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">CHANGE PASSWORD</h1>
+        <p className="text-slate-500 font-medium text-sm">Update your account security credentials.</p>
+      </div>
 
-          <div className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current Password
-                </label>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Form Area */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-slate-200">
+            <form onSubmit={handleSubmit} className="space-y-6 max-w-xl">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Current Password *</label>
                 <div className="relative">
-                  <FaLock className="absolute left-3 top-4 text-gray-400" />
+                  <FaLock className="absolute left-3 top-4 text-slate-400" />
                   <input
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type={showPasswords.old ? 'text' : 'password'}
                     placeholder="Enter current password"
-                    required
+                    value={formData.oldPassword}
+                    onChange={(e) => {
+                      setFormData({...formData, oldPassword: e.target.value});
+                      setErrors({...errors, oldPassword: ''});
+                    }}
+                    className={inputClass('oldPassword')}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-4 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPasswords({...showPasswords, old: !showPasswords.old})}
+                    className="absolute right-3 top-4 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showPasswords.old ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
+                {errors.oldPassword && <p className="text-red-500 text-[10px] font-bold mt-1 pl-1 uppercase tracking-tight">{errors.oldPassword}</p>}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Password
-                </label>
+              {/* New Password */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">New Password *</label>
                 <div className="relative">
-                  <FaLock className="absolute left-3 top-4 text-gray-400" />
+                  <FaLock className="absolute left-3 top-4 text-slate-400" />
                   <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={handleNewPasswordChange}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type={showPasswords.new ? 'text' : 'password'}
                     placeholder="Enter new password"
-                    required
+                    value={formData.newPassword}
+                    onChange={(e) => {
+                      setFormData({...formData, newPassword: e.target.value});
+                      setErrors({...errors, newPassword: ''});
+                    }}
+                    className={inputClass('newPassword')}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-4 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
+                    className="absolute right-3 top-4 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
-                
-                {newPassword && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-600">Password Strength:</span>
-                      <span className={`text-sm font-medium ${
-                        passwordStrength < 3 ? 'text-red-600' : 
-                        passwordStrength < 4 ? 'text-yellow-600' : 'text-green-600'
-                      }`}>
-                        {getStrengthText(passwordStrength)}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(passwordStrength)}`}
-                        style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
+                {errors.newPassword && <p className="text-red-500 text-[10px] font-bold mt-1 pl-1 uppercase tracking-tight">{errors.newPassword}</p>}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm New Password
-                </label>
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Confirm New Password *</label>
                 <div className="relative">
-                  <FaLock className="absolute left-3 top-4 text-gray-400" />
+                  <FaLock className="absolute left-3 top-4 text-slate-400" />
                   <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type={showPasswords.confirm ? 'text' : 'password'}
                     placeholder="Confirm new password"
-                    required
+                    value={formData.confirmPassword}
+                    onChange={(e) => {
+                      setFormData({...formData, confirmPassword: e.target.value});
+                      setErrors({...errors, confirmPassword: ''});
+                    }}
+                    className={inputClass('confirmPassword')}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-4 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPasswords({...showPasswords, confirm: !showPasswords.confirm})}
+                    className="absolute right-3 top-4 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
-                
-                {confirmPassword && (
-                  <div className="mt-2 flex items-center">
-                    {newPassword === confirmPassword ? (
-                      <div className="flex items-center text-green-600">
-                        <FaCheckCircle className="mr-1" />
-                        <span className="text-sm">Passwords match</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-red-600">
-                        <span className="text-sm">Passwords do not match</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {errors.confirmPassword && <p className="text-red-500 text-[10px] font-bold mt-1 pl-1 uppercase tracking-tight">{errors.confirmPassword}</p>}
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 font-semibold"
+                disabled={loading}
+                className="w-full bg-slate-800 text-white py-3 rounded-lg hover:bg-slate-900 transition-all font-bold uppercase tracking-wider text-[11px] disabled:opacity-50 disabled:cursor-not-allowed mt-4 shadow-sm active:scale-95"
               >
-                Change Password
+                {loading ? 'Updating Credentials...' : 'Update Password'}
               </button>
             </form>
+          </div>
+        </div>
 
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold text-gray-800 mb-2">Password Requirements:</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• At least 8 characters long</li>
-                <li>• Contains uppercase and lowercase letters</li>
-                <li>• Contains at least one number</li>
-                <li>• Contains at least one special character</li>
-              </ul>
+        {/* Info Area */}
+        <div className="space-y-6">
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                <FaShieldAlt size={18} />
+              </div>
+              <h3 className="font-bold text-indigo-900 text-sm uppercase tracking-wider">Security Protocols</h3>
             </div>
+            <ul className="text-xs text-indigo-800 space-y-3 font-medium">
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                <span>Use a complex mix of letters, numbers & symbols.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                <span>Minimum length must be at least 6 characters.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                <span>Unique passwords prevent account vulnerability.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                <span>Avoid sharing credentials with unauthorized personnel.</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>

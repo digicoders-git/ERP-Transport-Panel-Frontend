@@ -1,254 +1,283 @@
-import React, { useState } from 'react';
-import { FaCheckCircle, FaTimesCircle, FaCar, FaGasPump, FaLightbulb, FaVolumeUp, FaWrench } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { 
+  FaCheckCircle, 
+  FaTimesCircle, 
+  FaHistory, 
+  FaClipboardCheck,
+  FaTools,
+  FaShieldAlt,
+  FaCogs,
+  FaExclamationTriangle
+} from 'react-icons/fa';
+import { MdOutlineSecurity, MdVerified, MdSettingsSuggest, MdHistoryToggleOff } from 'react-icons/md';
+import { vehicleChecklistAPI } from '../api';
 import { toast } from 'react-toastify';
+import Swal from 'sweetalert2';
 
 const VehicleChecklist = () => {
-  const [checklist, setChecklist] = useState({
-    brakes: null,
-    lights: null,
-    horn: null,
-    fuel: '',
-    tyres: null,
-    engine: null,
-    mirrors: null,
-    seatbelts: null,
-    firstAid: null,
-    fireExtinguisher: null
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [todaySubmitted, setTodaySubmitted] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    brakes: true,
+    lights: true,
+    horn: true,
+    fuel: true,
+    tyres: true,
+    engine: true,
+    mirrors: true,
+    seatbelts: true,
+    firstAid: true,
+    fireExtinguisher: true,
+    notes: '',
+    date: new Date().toISOString().split('T')[0]
   });
 
-  const [submitted, setSubmitted] = useState(false);
-  const [notes, setNotes] = useState('');
+  useEffect(() => {
+    fetchChecklistData();
+  }, []);
 
-  const handleChecklistChange = (item, value) => {
-    setChecklist(prev => ({
+  const fetchChecklistData = async () => {
+    try {
+      setLoading(true);
+      const [todayRes, historyRes] = await Promise.all([
+        vehicleChecklistAPI.getToday(),
+        vehicleChecklistAPI.getHistory(1, 20)
+      ]);
+
+      setTodaySubmitted(!!todayRes.data?.data);
+      setHistory(historyRes.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching checklist:', error);
+      toast.error('Failed to load maintenance data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const result = await Swal.fire({
+      title: 'Confirm Inspection?',
+      text: 'Are you sure all vehicle systems have been checked?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#4f46e5',
+      confirmButtonText: 'Confirm Submission',
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl px-8 py-3 font-bold uppercase tracking-widest text-[10px]',
+        cancelButton: 'rounded-xl px-8 py-3 font-bold uppercase tracking-widest text-[10px]'
+      }
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setSubmitting(true);
+      await vehicleChecklistAPI.submit(formData);
+      toast.success('Inspection report submitted');
+      setShowForm(false);
+      setTodaySubmitted(true);
+      fetchChecklistData();
+    } catch (error) {
+      console.error('Error submitting checklist:', error);
+      toast.error(error.response?.data?.message || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleItem = (field) => {
+    setFormData(prev => ({
       ...prev,
-      [item]: value
+      [field]: !prev[field]
     }));
   };
 
-  const handleSubmit = () => {
-    const allChecked = Object.entries(checklist).every(([key, value]) => {
-      if (key === 'fuel') return value !== '';
-      return value !== null;
-    });
-
-    if (!allChecked) {
-      toast.error('Please complete all checklist items');
-      return;
-    }
-
-    setSubmitted(true);
-    toast.success('Daily checklist submitted successfully!');
-  };
-
   const checklistItems = [
-    {
-      key: 'brakes',
-      label: 'Brakes',
-      icon: FaCar,
-      description: 'Check brake pedal response and brake fluid'
-    },
-    {
-      key: 'lights',
-      label: 'Lights',
-      icon: FaLightbulb,
-      description: 'Headlights, taillights, indicators, hazard lights'
-    },
-    {
-      key: 'horn',
-      label: 'Horn',
-      icon: FaVolumeUp,
-      description: 'Test horn functionality'
-    },
-    {
-      key: 'tyres',
-      label: 'Tyres',
-      icon: FaCar,
-      description: 'Check tyre pressure and condition'
-    },
-    {
-      key: 'engine',
-      label: 'Engine',
-      icon: FaWrench,
-      description: 'Engine oil, coolant, battery'
-    },
-    {
-      key: 'mirrors',
-      label: 'Mirrors',
-      icon: FaCar,
-      description: 'All mirrors clean and properly adjusted'
-    },
-    {
-      key: 'seatbelts',
-      label: 'Seatbelts',
-      icon: FaCar,
-      description: 'Driver and passenger seatbelts working'
-    },
-    {
-      key: 'firstAid',
-      label: 'First Aid Kit',
-      icon: FaWrench,
-      description: 'First aid kit present and stocked'
-    },
-    {
-      key: 'fireExtinguisher',
-      label: 'Fire Extinguisher',
-      icon: FaWrench,
-      description: 'Fire extinguisher present and functional'
-    }
+    { key: 'brakes', label: 'Brakes Condition', icon: '🛑' },
+    { key: 'lights', label: 'Headlights/Indicators', icon: '💡' },
+    { key: 'horn', label: 'Horn Condition', icon: '📢' },
+    { key: 'fuel', label: 'Fuel Level Status', icon: '⛽' },
+    { key: 'tyres', label: 'Tyre Pressure/Grip', icon: '🛞' },
+    { key: 'engine', label: 'Engine Health', icon: '⚙️' },
+    { key: 'mirrors', label: 'Mirror Visibility', icon: '🪞' },
+    { key: 'seatbelts', label: 'Seatbelt Safety', icon: '🔒' },
+    { key: 'firstAid', label: 'First Aid Kit', icon: '🏥' },
+    { key: 'fireExtinguisher', label: 'Fire Extinguisher', icon: '🧯' }
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600 font-bold uppercase tracking-widest text-[10px] animate-pulse">Loading Logs...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 bg-gradient-to-br from-[#F3F4F4] to-[#5F9598]/10 min-h-screen" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
-      <div className="mx-auto px-6">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#5F9598] to-[#1D546D] p-6 text-white">
-            <h1 className="text-2xl font-bold">Daily Vehicle Checklist</h1>
-            <p className="text-green-100">Complete your daily safety inspection</p>
-            <p className="text-sm text-green-100 mt-2">Date: {new Date().toLocaleDateString()}</p>
+    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
+      {/* Header */}
+      <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+           <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                 <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
+                    Fleet Maintenance
+                 </span>
+                 <span className="flex items-center gap-1.5 px-3 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-bold border border-emerald-100 uppercase tracking-widest">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Certified
+                 </span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight uppercase leading-tight">MAINTENANCE CHECKLIST</h1>
+              <p className="text-slate-500 font-medium text-sm">Regular inspection of critical vehicle components.</p>
+           </div>
+           
+           <div className="bg-slate-50 rounded-xl px-6 py-4 border border-slate-100 text-right min-w-[200px]">
+              <div className="flex items-center justify-end gap-2 text-indigo-400 mb-1">
+                 <MdVerified size={14} />
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Unit Status</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-800 leading-none">GOOD CONDITION</p>
+           </div>
+        </div>
+      </div>
+
+      {/* Submission Status */}
+      <div className={`p-6 rounded-xl border transition-all ${todaySubmitted ? 'bg-white border-slate-200' : 'bg-amber-50 border-amber-100'}`}>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-sm ${todaySubmitted ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                {todaySubmitted ? <MdOutlineSecurity /> : <FaExclamationTriangle className="animate-pulse" />}
+             </div>
+             <div>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight uppercase">
+                  {todaySubmitted ? 'Daily Inspection Logged' : 'New Report Required'}
+                </h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                  {todaySubmitted ? 'Your vehicle status has been recorded for today.' : 'Please perform a routine systems check before departure.'}
+                </p>
+             </div>
+          </div>
+          {!todaySubmitted && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="w-full md:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold uppercase tracking-widest text-[10px] transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
+            >
+              <FaClipboardCheck size={14} /> START INSPECTION
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Inspection Form */}
+      {showForm && (
+        <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-slate-200 animate-in slide-in-from-top-4 duration-500">
+          <div className="mb-8 pb-4 border-b border-slate-50">
+            <h2 className="text-lg font-bold text-slate-100 uppercase tracking-tight text-slate-800">System Parameters</h2>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Mark the condition of each component</p>
           </div>
 
-          <div className="p-6">
-            {submitted ? (
-              <div className="text-center py-8">
-                <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold text-gray-800 mb-2">Checklist Completed!</h2>
-                <p className="text-gray-600">Your daily vehicle inspection has been submitted.</p>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {checklistItems.map(item => (
                 <button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setChecklist({
-                      brakes: null,
-                      lights: null,
-                      horn: null,
-                      fuel: '',
-                      tyres: null,
-                      engine: null,
-                      mirrors: null,
-                      seatbelts: null,
-                      firstAid: null,
-                      fireExtinguisher: null
-                    });
-                    setNotes('');
-                  }}
-                  className="mt-4 bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition"
+                  key={item.key}
+                  type="button"
+                  onClick={() => toggleItem(item.key)}
+                  className={`p-6 rounded-xl border transition-all duration-300 flex flex-col items-center gap-3 relative overflow-hidden ${
+                    formData[item.key]
+                      ? 'border-emerald-500 bg-emerald-50/10'
+                      : 'border-rose-500 bg-rose-50/10'
+                  }`}
                 >
-                  New Checklist
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Fuel Level */}
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center mb-3">
-                    <FaGasPump className="text-blue-500 text-xl mr-3" />
-                    <h3 className="text-lg font-semibold text-gray-800">Fuel Level</h3>
+                  <span className="text-3xl mb-1">{item.icon}</span>
+                  <span className="font-bold text-[9px] uppercase tracking-widest text-slate-800 text-center leading-tight">{item.label}</span>
+                  <div className={`mt-2 flex items-center gap-1 font-bold text-[8px] uppercase tracking-[0.2em] ${formData[item.key] ? 'text-emerald-600' : 'text-rose-600'}`}>
+                     {formData[item.key] ? (
+                       <><FaCheckCircle size={10} /> Normal</>
+                     ) : (
+                       <><FaTimesCircle size={10} /> Faulty</>
+                     )}
                   </div>
-                  <select
-                    value={checklist.fuel}
-                    onChange={(e) => handleChecklistChange('fuel', e.target.value)}
-                    className="w-full p-3 border cursor-pointer border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select fuel level</option>
-                    <option value="full">Full (75-100%)</option>
-                    <option value="three-quarter">3/4 (50-75%)</option>
-                    <option value="half">Half (25-50%)</option>
-                    <option value="quarter">1/4 (0-25%)</option>
-                    <option value="empty">Empty (Refuel Required)</option>
-                  </select>
-                </div>
+                </button>
+              ))}
+            </div>
 
-                {/* Checklist Items */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {checklistItems.map((item) => {
-                    const IconComponent = item.icon;
-                    return (
-                      <div key={item.key} className="p-4 border border-gray-200 rounded-lg">
-                        <div className="flex items-center mb-3">
-                          <IconComponent className="text-gray-600 text-xl mr-3" />
-                          <h3 className="font-semibold text-gray-800">{item.label}</h3>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleChecklistChange(item.key, true)}
-                            className={`flex items-center cursor-pointer px-4 py-2 rounded-lg transition ${
-                              checklist[item.key] === true
-                                ? 'bg-green-500 text-white cursor-pointer'
-                                : 'bg-gray-100 text-gray-700 hover:bg-green-100'
-                            }`}
-                          >
-                            <FaCheckCircle className="mr-2" />
-                            Good
-                          </button>
-                          <button
-                            onClick={() => handleChecklistChange(item.key, false)}
-                            className={`flex cursor-pointer items-center px-4 py-2 rounded-lg transition ${
-                              checklist[item.key] === false
-                                ? 'bg-red-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-red-100'
-                            }`}
-                          >
-                            <FaTimesCircle className="mr-2" />
-                            Issue
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Additional Observations</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder="Declare any malfunctions or specific details here..."
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-sm text-slate-800 min-h-[100px] placeholder:text-slate-300"
+              />
+            </div>
 
-                {/* Additional Notes */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Additional Notes</h3>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Any additional observations or issues..."
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="4"
-                  />
-                </div>
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-50">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-lg font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting ? <FaCogs className="animate-spin" /> : <MdVerified size={14} />}
+                <span>Log Inspection Record</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-500 py-3.5 rounded-lg font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
-                {/* Submit Button */}
-                <div className="text-center">
-                  <button
-                    onClick={handleSubmit}
-                    className="bg-green-500 cursor-pointer text-white px-8 py-3 rounded-lg hover:bg-green-600 transition font-semibold"
-                  >
-                    Submit Daily Checklist
-                  </button>
-                </div>
-              </>
-            )}
+      {/* Audit Logs */}
+      <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-slate-200">
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+          <div className="flex items-center gap-3">
+             <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                <MdHistoryToggleOff size={20} />
+             </div>
+             <h2 className="text-lg font-bold text-slate-800 tracking-tight uppercase">Recent Inspection History</h2>
           </div>
         </div>
 
-        {/* Previous Reports */}
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Checklist History</h2>
-          <div className="space-y-3">
-            {[
-              { date: '2024-01-15', status: 'All Good', issues: 0 },
-              { date: '2024-01-14', status: 'Minor Issues', issues: 1 },
-              { date: '2024-01-13', status: 'All Good', issues: 0 }
-            ].map((report, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-800">{report.date}</p>
-                  <p className="text-sm text-gray-600">{report.status}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {history.length > 0 ? (
+            history.map((item) => (
+              <div key={item._id} className="p-4 bg-slate-50 border border-slate-100 rounded-xl transition-all hover:bg-white hover:border-indigo-100 hover:shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                   <div>
+                      <p className="text-xs font-bold text-slate-800 tracking-tight">{new Date(item.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      <p className={`text-[8px] font-bold uppercase tracking-[0.2em] mt-0.5 ${item.status === 'All Good' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                         {item.status === 'All Good' ? 'CLEARED' : 'ISSUE LOGGED'}
+                      </p>
+                   </div>
+                   <div className={`p-2 rounded-lg ${item.status === 'All Good' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {item.status === 'All Good' ? <FaShieldAlt size={14} /> : <FaTools size={14} />}
+                   </div>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-sm ${
-                  report.issues === 0 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {report.issues === 0 ? 'No Issues' : `${report.issues} Issue(s)`}
-                </div>
+                {item.notes && (
+                  <p className="text-[10px] font-medium text-slate-400 italic line-clamp-2 leading-relaxed">"{item.notes}"</p>
+                )}
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <div className="col-span-full py-12 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">No historical data available.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

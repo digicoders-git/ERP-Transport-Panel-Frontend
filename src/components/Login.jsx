@@ -1,94 +1,124 @@
 import React, { useState } from 'react';
 import { FaBus, FaIdCard, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 
-const Login = ({ onLogin }) => {
-  const [driverId, setDriverId] = useState('');
+const Login = () => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const { login } = useAuth();
 
-  // Demo credentials
-  const validCredentials = {
-    'DRV001': 'pass123',
-    'DRV002': 'pass456',
-    'DRV003': 'pass789'
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (driverId.trim() && password.trim()) {
-      localStorage.setItem('driverId', driverId);
-      onLogin();
-    } else {
-      toast.error('Please enter Driver ID and Password');
+    setErrorMessage('');
+    
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage('Please fill in all fields');
+      toast.error('Missing credentials');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const success = await login(email, password);
+      if (!success) {
+        setErrorMessage('Invalid credentials. Please try again.');
+      }
+    } catch (error) {
+      setErrorMessage('System error. Please contact administrator.');
+      toast.error('System error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0">
-        <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce"></div>
-        <div className="absolute top-32 right-20 w-16 h-16 bg-yellow-300/20 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-20 left-32 w-24 h-24 bg-pink-300/15 rounded-full animate-bounce delay-300"></div>
-        <div className="absolute bottom-40 right-10 w-12 h-12 bg-green-300/20 rounded-full animate-pulse delay-500"></div>
-        <div className="absolute top-1/2 left-1/4 w-8 h-8 bg-orange-300/25 rounded-full animate-ping"></div>
-        <div className="absolute top-1/3 right-1/3 w-6 h-6 bg-cyan-300/30 rounded-full animate-bounce delay-700"></div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden font-sans">
+      {/* Subtle Background pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
       </div>
-      
-      {/* Floating Bus Icons */}
-      <div className="absolute inset-0 pointer-events-none">
-        <FaBus className="absolute top-20 left-1/4 text-white/10 text-4xl animate-float" />
-        <FaBus className="absolute bottom-32 right-1/4 text-white/10 text-3xl animate-float-delayed" />
-        <FaBus className="absolute top-1/2 right-20 text-white/10 text-2xl animate-float-slow" />
-      </div>
-      
-      <div className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-2xl w-96 z-10 border border-white/20">
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
-            <FaBus className="text-white text-3xl" />
+
+      <div className="w-full max-w-md px-6 z-10">
+        <div className="bg-white p-8 md:p-10 rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200">
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-100">
+              <FaBus className="text-white text-3xl" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 tracking-tight uppercase">TRANSPORT PANEL</h2>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">Administrative Access</p>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">School Driver Panel</h2>
-          <p className="text-gray-600 text-sm mt-2">Enter any ID and password to login</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <FaIdCard className="absolute left-3 top-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Enter any Driver ID"
-              value={driverId}
-              onChange={(e) => setDriverId(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-          </div>
-          <div className="relative">
-            <FaLock className="absolute left-3 top-4 text-gray-400" />
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter any password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+
+          {errorMessage && (
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold uppercase tracking-wide">
+              {errorMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Authorized Email</label>
+              <div className="relative group">
+                <FaIdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                <input
+                  type="email"
+                  placeholder="name@school.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-sm text-slate-700 placeholder:text-slate-300"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Access Passphrase</label>
+              <div className="relative group">
+                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-sm text-slate-700 placeholder:text-slate-300"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                  disabled={isLoading}
+                >
+                  {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                </button>
+              </div>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-4 text-gray-400 hover:text-gray-600"
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-indigo-600 text-white py-4 rounded-xl hover:bg-indigo-700 transition-all font-bold uppercase tracking-widest text-xs shadow-lg shadow-indigo-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
             >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></div>
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                'Log In'
+              )}
             </button>
+          </form>
+
+          <div className="mt-8 text-center pt-8 border-t border-slate-50">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authorized Access Only</p>
           </div>
-          <button
-            type="submit"
-            className="w-full cursor-pointer bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition duration-300 font-semibold shadow-lg transform hover:scale-105"
-          >
-            Login
-          </button>
-        </form>
-        
+        </div>
       </div>
     </div>
   );

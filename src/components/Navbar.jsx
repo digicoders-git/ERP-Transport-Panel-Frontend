@@ -1,25 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FaBars, FaBus } from 'react-icons/fa';
+import { FaBars, FaBus, FaSignOutAlt } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = ({ toggleSidebar, sidebarOpen }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const driverId = localStorage.getItem('driverId');
+  const { user, logout } = useAuth();
   
-  const driverNames = {
-    'DRV001': 'Rajesh Kumar',
-    'DRV002': 'Suresh Singh', 
-    'DRV003': 'Amit Sharma'
-  };
-  
-  const driverPhotos = {
-    'DRV001': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-    'DRV002': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-    'DRV003': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=40&h=40&fit=crop&crop=face'
-  };
-  
-  const driverName = driverNames[driverId] || 'Driver';
-  const driverPhoto = driverPhotos[driverId];
-
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -31,65 +17,64 @@ const Navbar = ({ toggleSidebar, sidebarOpen }) => {
     return date.toLocaleTimeString('en-US', {
       hour12: true,
       hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+      minute: '2-digit'
     });
   };
 
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
+  const handleLogout = () => {
+    logout();
+  };
+
   return (
-    <nav className={`bg-white shadow-lg border-b border-gray-200 px-6 py-4 fixed top-0 right-0 z-10 transition-all duration-300 ${
+    <nav className={`bg-white border-b border-slate-200 px-4 py-3 fixed top-0 right-0 z-10 transition-all duration-300 ${
       sidebarOpen ? 'left-64' : 'left-16'
-    }`}>
-      <div className="flex justify-between items-center">
+    } font-sans`}>
+      <div className="flex justify-between items-center px-2">
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-2 rounded-lg hover:bg-slate-50 transition-colors text-slate-400 hover:text-indigo-600 border border-transparent hover:border-slate-100"
           >
-            <FaBars className="text-xl text-gray-600" />
+            <FaBars size={18} />
           </button>
-          <h1 className="text-xl font-semibold text-gray-800">School Driver Panel</h1>
+          <div className="flex flex-col">
+            <h1 className="text-md font-bold text-slate-800 tracking-tight uppercase leading-none">TRANSPORT PANEL</h1>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Operational Control</p>
+          </div>
         </div>
         
         <div className="flex items-center space-x-6">
-          <div className="text-right">
-            <div className="text-sm font-medium text-gray-600">{formatTime(currentTime)}</div>
-            <div className="text-xs text-gray-500">{formatDate(currentTime)}</div>
+          <div className="hidden lg:block text-right pr-6 border-r border-slate-100">
+            <div className="text-sm font-bold text-slate-700 tracking-tight">{formatTime(currentTime)}</div>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{formatDate(currentTime)}</div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md p-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-200">
-                {driverPhoto ? (
-                  <img 
-                    src={driverPhoto} 
-                    alt={driverName}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div className="w-full h-full bg-orange-500 rounded-full flex items-center justify-center" style={{display: driverPhoto ? 'none' : 'flex'}}>
-                  <FaBus className="text-white text-lg" />
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-800">{driverName}</div>
-                <div className="text-xs text-gray-500">{driverId}</div>
-              </div>
+          <div className="flex items-center space-x-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-indigo-100 uppercase">
+              {user?.name?.charAt(0) || 'U'}
+            </div>
+            <div className="hidden sm:block">
+              <div className="text-xs font-bold text-slate-800 leading-none uppercase">{user?.name || 'Authorized User'}</div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Staff Access</div>
             </div>
           </div>
+
+          <button
+            onClick={handleLogout}
+            className="p-2 text-slate-300 hover:text-rose-600 transition-colors group"
+            title="Logout"
+          >
+            <FaSignOutAlt size={20} className="group-hover:scale-110 transition-transform" />
+          </button>
         </div>
       </div>
     </nav>
