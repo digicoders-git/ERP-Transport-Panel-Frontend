@@ -78,28 +78,34 @@ const RouteTracking = () => {
         (error) => {
           console.error('Geolocation error:', error);
           setGpsStatus('error');
-          let msg = 'GPS link unstable';
+          let msg = 'GPS signal lost';
           switch(error.code) {
             case error.PERMISSION_DENIED:
-              msg = "Location access denied. Please enable GPS.";
+              msg = "Location access denied. Please allow location permissions in your browser settings.";
               break;
             case error.POSITION_UNAVAILABLE:
-              msg = "Location information unavailable.";
+              msg = "GPS signal is currently unavailable. Move to an open area.";
               break;
             case error.TIMEOUT:
-              msg = "GPS request timed out.";
+              msg = "GPS request timed out. Retrying...";
               break;
           }
           setGpsErrorMessage(msg);
-          toast.error(msg);
+          // Only show toast once for errors to avoid spam
+          if (!gpsErrorMessage) toast.error(msg);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
       setGpsStatus('error');
-      setGpsErrorMessage("GPS not supported on this browser.");
+      setGpsErrorMessage("Your browser does not support GPS tracking.");
       return null;
     }
+  };
+
+  const handleRetryGps = () => {
+    setGpsStatus('connecting');
+    startLocationTracking();
   };
 
   const getLocationName = async (lat, lng) => {
@@ -248,7 +254,7 @@ const RouteTracking = () => {
   const attendanceComplete = stopStudents.length === 0 || stopStudents.every(s => selectedStudents[s._id]);
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-6 space-y-6 mt-15 bg-slate-50 min-h-screen">
       {/* Real-time Tracking Header */}
       <div className="bg-white rounded-xl p-6 md:p-8 border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
@@ -270,9 +276,19 @@ const RouteTracking = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">TRIP DASHBOARD</h1>
-              <p className="text-slate-500 font-medium text-sm flex items-center gap-1.5 mt-0.5 uppercase tracking-wide">
-                <FaLocationArrow className="text-xs" /> {gpsStatus === 'error' ? gpsErrorMessage : location}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-slate-500 font-medium text-sm flex items-center gap-1.5 mt-0.5 uppercase tracking-wide">
+                  <FaLocationArrow className="text-xs" /> {gpsStatus === 'error' ? gpsErrorMessage : location}
+                </p>
+                {gpsStatus === 'error' && (
+                  <button 
+                    onClick={handleRetryGps}
+                    className="text-[10px] font-bold text-indigo-600 underline uppercase tracking-widest hover:text-indigo-800"
+                  >
+                    Retry GPS
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           

@@ -166,6 +166,10 @@ export const studentAPI = {
   search: (query) => api.get('/student-optimized/all', { params: { search: query, limit: 50 } })
 };
 
+export const staffAPI = {
+  search: (query, role = 'staff') => api.get('/admin-panel/staff/all', { params: { search: query, limit: 50, role } })
+};
+
 // ============ DRIVER SALARY & DOCUMENTS ============
 export const driverSalaryAPI = {
   getSalary: () => api.get('/transport-panel/salary-docs/salary'),
@@ -176,6 +180,17 @@ export const driverSalaryAPI = {
 export const gpsTrackingAPI = {
   updateLocation: (data) => api.post('/transport-panel/gps/location/update', data),
   getDriverDashboard: () => api.get('/transport-panel/gps/driver/dashboard')
+};
+
+// ============ TRIP MANAGEMENT ============
+export const tripAPI = {
+  getActiveTrip: () => api.get('/transport-panel/trip/active'),
+  startTrip: (data) => api.post('/transport-panel/trip/start', data),
+  arriveAtStop: (tripId, stopId) => api.post('/transport-panel/trip/arrive', { tripId, stopId }),
+  markAttendance: (tripId, stopId, attendanceData) => 
+    api.post('/transport-panel/trip/attendance', { tripId, stopId, attendanceData }),
+  departStop: (tripId, stopId) => api.post('/transport-panel/trip/depart', { tripId, stopId }),
+  endTrip: (tripId) => api.post('/transport-panel/trip/end', { tripId })
 };
 
 export default api;

@@ -18,6 +18,8 @@ import RouteCharges from '../pages/RouteCharges';
 import RouteTracking from '../pages/RouteTracking';
 import TransportAllocation from '../pages/TransportAllocation';
 import TransportAssignment from '../pages/TransportAssignment';
+import TripManagement from '../pages/TripManagement';
+import MyAttendance from './MyAttendance';
 
 const Layout = () => {
   const [activePage, setActivePage] = useState(() => {
@@ -47,6 +49,8 @@ const Layout = () => {
         return <RouteTracking />;
       case 'vehicle-checklist':
         return <VehicleChecklist />;
+      case 'trip-management':
+        return <TripManagement />;
       case 'emergency-complaints':
         return <EmergencyComplaints />;
       case 'salary-documents':
@@ -69,6 +73,8 @@ const Layout = () => {
         return <TransportAllocation />;
       case 'transport-assignment':
         return <TransportAssignment />;
+      case 'my-attendance':
+        return <MyAttendance />;
       default:
         return <Dashboard setActivePage={setActivePage} />;
     }
@@ -76,18 +82,18 @@ const Layout = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans">
-      <Sidebar 
-        activePage={activePage} 
-        setActivePage={setActivePage} 
+      <Sidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
         isOpen={sidebarOpen}
         toggleSidebar={toggleSidebar}
       />
-      <Navbar 
-        toggleSidebar={toggleSidebar} 
+      <Navbar
+        toggleSidebar={toggleSidebar}
         sidebarOpen={sidebarOpen}
       />
-      <main className={`pt-20 p-4 md:p-6 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
-        <div className="max-w-[1600px] mx-auto">
+      <main className={`pt-32 p-4 md:p-6 transition-all duration-300 min-h-screen ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
+        <div className="max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
           {renderPage()}
         </div>
       </main>

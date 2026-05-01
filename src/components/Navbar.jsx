@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const Navbar = ({ toggleSidebar, sidebarOpen }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { user, logout } = useAuth();
-  
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -35,10 +35,10 @@ const Navbar = ({ toggleSidebar, sidebarOpen }) => {
   };
 
   return (
-    <nav className={`bg-white border-b border-slate-200 px-4 py-3 fixed top-0 right-0 z-10 transition-all duration-300 ${
+    <nav className={`bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 h-24 fixed top-0 right-0 z-40 transition-all duration-300 flex items-center shadow-lg shadow-slate-200/20 ${
       sidebarOpen ? 'left-64' : 'left-16'
     } font-sans`}>
-      <div className="flex justify-between items-center px-2">
+      <div className="flex justify-between items-center w-full px-2">
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleSidebar}
@@ -51,13 +51,13 @@ const Navbar = ({ toggleSidebar, sidebarOpen }) => {
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Operational Control</p>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-6">
           <div className="hidden lg:block text-right pr-6 border-r border-slate-100">
             <div className="text-sm font-bold text-slate-700 tracking-tight">{formatTime(currentTime)}</div>
             <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{formatDate(currentTime)}</div>
           </div>
-          
+
           <div className="flex items-center space-x-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-indigo-100 uppercase">
               {user?.name?.charAt(0) || 'U'}
