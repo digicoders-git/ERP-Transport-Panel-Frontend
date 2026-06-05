@@ -26,7 +26,7 @@ const DriverProfile = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5002';
+  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://erp-backend-0ab5.onrender.com';
 
   useEffect(() => {
     fetchDriverProfile();

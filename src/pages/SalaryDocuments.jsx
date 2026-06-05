@@ -48,7 +48,7 @@ const SalaryDocuments = () => {
     }
   };
 
-  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5002';
+  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://erp-backend-0ab5.onrender.com';
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen mt-15">
